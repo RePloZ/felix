@@ -1,5 +1,9 @@
-#![allow(unused_imports)]
-use std::{io::{Read, Write}, net::TcpListener};
+use std::io::{Read, Write};
+use std::net::TcpListener;
+
+use crate::request::header::RequestHeader;
+
+pub mod request;
 
 fn main() {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -12,9 +16,10 @@ fn main() {
                 let mut buffer = [0; 1024];
                 let _ = stream.read(&mut buffer);
 
-                let res = [0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x07];
+                let req_header = RequestHeader::from(&buffer);
 
-                let _ = stream.write(&res);
+                let _ = stream.write_all(&(0i32).to_be_bytes());
+                let _ = stream.write(&req_header.correlation_id.to_be_bytes());
                 let _ = stream.flush();
 
                 println!("accepted new connection");
