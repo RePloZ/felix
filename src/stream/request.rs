@@ -1,0 +1,94 @@
+use tokio::{io::AsyncReadExt, net::TcpStream};
+
+#[derive(Debug)]
+pub struct RequestApiVersion {
+    pub msg_size: u32,
+    pub header: RequestHeader,
+    pub api_version: ApiVersion,
+}
+
+#[derive(Debug)]
+pub struct RequestHeader {
+    pub key: u16,
+    pub version: u16,
+    pub correlation_id: u32,
+    pub client: ClientId,
+    pub tag_buffer: u8,
+}
+
+#[derive(Debug)]
+pub struct ClientId {
+    pub length: u16,
+    pub content: String,
+}
+
+#[derive(Debug)]
+pub struct ClientSoftwareVersion {
+    pub length: u8,
+    pub content: String,
+}
+
+#[derive(Debug)]
+pub struct ApiVersion {
+    pub client: ApiVersionClientId,
+    pub software_version: ClientSoftwareVersion,
+    pub tag_buffer: u8,
+}
+
+#[derive(Debug)]
+pub struct ApiVersionClientId {
+    pub length: u8,
+    pub content: String,
+}
+
+pub struct Header {
+    pub api_key: i16,
+    pub api_version: i16,
+    pub correlation_id: i32,
+    pub msg_size: u32,
+    pub client_id: Option<Vec<u8>>,
+    pub tag_buffer: Option<Vec<u8>>,
+}
+
+impl Header {
+    pub fn check_version(&self) -> i16 {
+        match self.api_version {
+            0..=4 => 0,
+            _ => 35,
+        }
+    }
+}
+
+impl ApiVersionClientId {
+    pub async fn read_client(stream: &mut TcpStream) -> Self {
+        let length = stream.read_u8().await.unwrap();
+        let mut content: Vec<u8> = vec![0; (length as usize) - 1];
+        stream.read_exact(&mut content).await.unwrap();
+        let content = String::from_utf8(content).unwrap();
+
+        Self { length, content }
+    }
+}
+
+impl ClientId {
+    pub async fn read_client(stream: &mut TcpStream) -> Self {
+        let length = stream.read_u16().await.unwrap();
+        let mut content: Vec<u8> = vec![0; length.into()];
+        stream.read_exact(&mut content).await.unwrap();
+        let content = String::from_utf8(content).unwrap();
+
+        Self { length, content }
+    }
+}
+
+impl ClientSoftwareVersion {
+    pub async fn read_client(stream: &mut TcpStream) -> Self {
+        let length = stream.read_u8().await.unwrap();
+        let mut content = vec![0; (length as usize) - 1];
+        stream.read_exact(&mut content).await.unwrap();
+        Self {
+            length,
+            content: String::from_utf8(content).unwrap(),
+        }
+    }
+}
