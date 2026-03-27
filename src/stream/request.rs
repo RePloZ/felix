@@ -1,6 +1,8 @@
 use tokio::io::AsyncReadExt;
 use tokio::net::TcpStream;
 
+use crate::utils::CodecError;
+
 #[derive(Debug)]
 pub struct RequestApiVersion {
     pub msg_size: u32,
@@ -61,68 +63,68 @@ impl Header {
 }
 
 impl ApiVersionClientId {
-    pub async fn read_client(stream: &mut TcpStream) -> Self {
-        let length = stream.read_u8().await.unwrap();
+    pub async fn read_client(stream: &mut TcpStream) -> Result<Self, CodecError> {
+        let length = stream.read_u8().await?;
         let mut content: Vec<u8> = vec![0; (length as usize) - 1];
-        stream.read_exact(&mut content).await.unwrap();
-        let content = String::from_utf8(content).unwrap();
+        stream.read_exact(&mut content).await?;
+        let content = String::from_utf8(content).map_err(|_| CodecError::UnexpectedEof)?;
 
-        Self { length, content }
+        Ok(Self { length, content })
     }
 }
 
 impl ClientId {
-    pub async fn read_client(stream: &mut TcpStream) -> Self {
-        let length = stream.read_u16().await.unwrap();
+    pub async fn read_client(stream: &mut TcpStream) -> Result<Self, CodecError> {
+        let length = stream.read_u16().await?;
         let mut content: Vec<u8> = vec![0; length.into()];
-        stream.read_exact(&mut content).await.unwrap();
-        let content = String::from_utf8(content).unwrap();
+        stream.read_exact(&mut content).await?;
+        let content = String::from_utf8(content).map_err(|_| CodecError::UnexpectedEof)?;
 
-        Self { length, content }
+        Ok(Self { length, content })
     }
 }
 
 impl ClientSoftwareVersion {
-    pub async fn read_client(stream: &mut TcpStream) -> Self {
-        let length = stream.read_u8().await.unwrap();
+    pub async fn read_client(stream: &mut TcpStream) -> Result<Self, CodecError> {
+        let length = stream.read_u8().await?;
         let mut content = vec![0; (length as usize) - 1];
-        stream.read_exact(&mut content).await.unwrap();
-        Self {
+        stream.read_exact(&mut content).await?;
+        Ok(Self {
             length,
-            content: String::from_utf8(content).unwrap(),
-        }
+            content: String::from_utf8(content).map_err(|_| CodecError::UnexpectedEof)?,
+        })
     }
 }
 
 impl RequestApiVersion {
-    pub async fn from_socket(socket: &mut TcpStream) -> Self {
-        let msg_size = socket.read_u32().await.unwrap();
-        let api_key = socket.read_u16().await.unwrap();
-        let api_version = socket.read_u16().await.unwrap();
-        let correlation_id = socket.read_u32().await.unwrap();
-        let header_client = ClientId::read_client(socket).await;
+    pub async fn from_socket(socket: &mut TcpStream) -> Result<Self, CodecError> {
+        let msg_size = socket.read_u32().await?;
+        let api_key = socket.read_u16().await?;
+        let api_version = socket.read_u16().await?;
+        let correlation_id = socket.read_u32().await?;
+        let header_client = ClientId::read_client(socket).await?;
 
-        let tag_buffer = socket.read_u8().await.unwrap();
+        let tag_buffer = socket.read_u8().await?;
 
-        let api_version_client = ApiVersionClientId::read_client(socket).await;
-        let software_version = ClientSoftwareVersion::read_client(socket).await;
+        let api_version_client = ApiVersionClientId::read_client(socket).await?;
+        let software_version = ClientSoftwareVersion::read_client(socket).await?;
 
-        let api_tag_buffer = socket.read_u8().await.unwrap();
+        let api_tag_buffer = socket.read_u8().await?;
 
-        RequestApiVersion {
+        Ok(RequestApiVersion {
             msg_size,
             header: RequestHeader {
                 key: api_key,
                 version: api_version,
                 correlation_id,
                 client: header_client,
-                tag_buffer: tag_buffer,
+                tag_buffer,
             },
             api_version: ApiVersion {
                 client: api_version_client,
-                software_version: software_version,
+                software_version,
                 tag_buffer: api_tag_buffer,
             },
-        }
+        })
     }
 }

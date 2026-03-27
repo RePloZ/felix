@@ -12,11 +12,19 @@ use crate::utils::CodecError;
 pub async fn handle_connection(mut socket: TcpStream) -> Result<(), CodecError> {
     use crate::stream::response::ResponseApiVersion;
 
-    let req = RequestApiVersion::from_socket(&mut socket).await;
-    let mut buf: BytesMut = ResponseApiVersion::from(req).into();
+    loop {
+        let req = match RequestApiVersion::from_socket(&mut socket).await {
+            Ok(req) => req,
+            Err(_) => break,
+        };
 
-    socket
-        .write_all_buf(&mut buf)
-        .await
-        .map_err(|err| CodecError::from(err))
+        let mut buf: BytesMut = ResponseApiVersion::from(req).into();
+
+        socket
+            .write_all_buf(&mut buf)
+            .await
+            .map_err(|err| CodecError::from(err))?;
+    }
+
+    Ok(())
 }
