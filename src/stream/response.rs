@@ -1,4 +1,5 @@
-use crate::{stream::request::RequestApiVersion, utils::ResponseApiError};
+use crate::stream::request::RequestApiVersion;
+use crate::utils::ResponseApiError;
 use bytes::{BufMut, BytesMut};
 
 pub struct ResponseApiVersion {
@@ -27,7 +28,10 @@ impl From<RequestApiVersion> for ResponseApiVersion {
     fn from(req: RequestApiVersion) -> Self {
         let error_code: u16 = match Self::check(&req) {
             Ok(_) => 0,
-            Err(err) => err.into(),
+            Err(err) => {
+                eprintln!("{err}");
+                err.into()
+            }
         };
 
         let mut versions = Vec::new();

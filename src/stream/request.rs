@@ -1,4 +1,5 @@
-use tokio::{io::AsyncReadExt, net::TcpStream};
+use tokio::io::AsyncReadExt;
+use tokio::net::TcpStream;
 
 #[derive(Debug)]
 pub struct RequestApiVersion {
@@ -89,6 +90,39 @@ impl ClientSoftwareVersion {
         Self {
             length,
             content: String::from_utf8(content).unwrap(),
+        }
+    }
+}
+
+impl RequestApiVersion {
+    pub async fn from_socket(socket: &mut TcpStream) -> Self {
+        let msg_size = socket.read_u32().await.unwrap();
+        let api_key = socket.read_u16().await.unwrap();
+        let api_version = socket.read_u16().await.unwrap();
+        let correlation_id = socket.read_u32().await.unwrap();
+        let header_client = ClientId::read_client(socket).await;
+
+        let tag_buffer = socket.read_u8().await.unwrap();
+
+        let api_version_client = ApiVersionClientId::read_client(socket).await;
+        let software_version = ClientSoftwareVersion::read_client(socket).await;
+
+        let api_tag_buffer = socket.read_u8().await.unwrap();
+
+        RequestApiVersion {
+            msg_size,
+            header: RequestHeader {
+                key: api_key,
+                version: api_version,
+                correlation_id,
+                client: header_client,
+                tag_buffer: tag_buffer,
+            },
+            api_version: ApiVersion {
+                client: api_version_client,
+                software_version: software_version,
+                tag_buffer: api_tag_buffer,
+            },
         }
     }
 }

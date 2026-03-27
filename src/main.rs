@@ -1,7 +1,6 @@
-use bytes::BytesMut;
-use tokio::{io::AsyncWriteExt, net::TcpListener};
+use tokio::net::TcpListener;
 
-use crate::stream::{parse_request, response::ResponseApiVersion};
+use crate::stream::handle_connection;
 
 pub mod stream;
 pub mod utils;
@@ -13,16 +12,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let listener = TcpListener::bind("127.0.0.1:9092").await?;
     loop {
-        match listener.accept().await {
-            Ok((mut stream, _)) => {
-                tokio::spawn(async move {
-                    let req = parse_request(&mut stream).await;
-                    let mut buf: BytesMut = ResponseApiVersion::from(req).into();
+        let socket = listener.accept().await?.0;
 
-                    stream.write_all_buf(&mut buf).await.unwrap()
-                });
+        tokio::spawn(async move {
+            if let Err(error) = handle_connection(socket).await {
+                eprintln!("connection error: {:?}", error);
             }
-            Err(e) => println!("error: {}", e),
-        }
+        });
     }
 }

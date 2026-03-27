@@ -8,6 +8,14 @@ pub enum ResponseApiError {
     UnsupportedVersion(u16),
 }
 
+#[derive(Debug, Error)]
+pub enum CodecError {
+    #[error("unexpected end of buffer")]
+    UnexpectedEof,
+    #[error("invalid data: {0}")]
+    InvalidData(#[from] std::io::Error),
+}
+
 impl Into<u16> for ResponseApiError {
     fn into(self) -> u16 {
         match self {
