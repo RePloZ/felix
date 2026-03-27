@@ -1,6 +1,7 @@
-use crate::stream::request::RequestApiVersion;
-use crate::utils::ResponseApiError;
 use bytes::{BufMut, BytesMut};
+
+use super::req::KafkaRequest;
+use crate::utils::ResponseApiError;
 
 pub struct ResponseApiVersion {
     pub header: ResponseHeader,
@@ -24,8 +25,8 @@ pub struct ResponseVersion {
     tag_buffer: u8,
 }
 
-impl From<RequestApiVersion> for ResponseApiVersion {
-    fn from(req: RequestApiVersion) -> Self {
+impl From<KafkaRequest> for ResponseApiVersion {
+    fn from(req: KafkaRequest) -> Self {
         let error_code: u16 = match Self::check(&req) {
             Ok(_) => 0,
             Err(err) => {
@@ -58,35 +59,23 @@ impl From<RequestApiVersion> for ResponseApiVersion {
 
 impl ResponseApiVersion {
     pub fn size(&self) -> u32 {
-        let mut size = 4; // correlation_id
-        size += 2; // error_code
-        size += 1; // api_keys array length (compact array, 1 element = 0x02 which is 1 byte)
-        for _version in &self.body.versions {
-            size += 2; // api_key
-            size += 2; // min_version
-            size += 2; // max_version
-            size += 1; // tag_buffer
-        }
-        size += 4; // throttle_time_ms
-        size += 1; // tag_buffer
-
-        size
+        12 + (self.body.versions.len() as u32) * 7
     }
 
-    fn check(req: &RequestApiVersion) -> Result<(), ResponseApiError> {
+    fn check(req: &KafkaRequest) -> Result<(), ResponseApiError> {
         Self::check_api_key(&req)?;
         Self::check_version(&req)?;
         Ok(())
     }
 
-    fn check_api_key(req: &RequestApiVersion) -> Result<(), ResponseApiError> {
+    fn check_api_key(req: &KafkaRequest) -> Result<(), ResponseApiError> {
         if req.header.key == 18 {
             return Ok(());
         }
         Err(ResponseApiError::UnsupportedKey(req.header.key))
     }
 
-    fn check_version(req: &RequestApiVersion) -> Result<(), ResponseApiError> {
+    fn check_version(req: &KafkaRequest) -> Result<(), ResponseApiError> {
         if (0..=4).contains(&req.header.version) {
             return Ok(());
         }

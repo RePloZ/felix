@@ -4,7 +4,7 @@ use tokio::net::TcpStream;
 use crate::utils::CodecError;
 
 #[derive(Debug)]
-pub struct RequestApiVersion {
+pub struct KafkaRequest {
     pub msg_size: u32,
     pub header: RequestHeader,
     pub api_version: ApiVersion,
@@ -96,7 +96,7 @@ impl ClientSoftwareVersion {
     }
 }
 
-impl RequestApiVersion {
+impl KafkaRequest {
     pub async fn from_socket(socket: &mut TcpStream) -> Result<Self, CodecError> {
         let msg_size = socket.read_u32().await?;
         let api_key = socket.read_u16().await?;
@@ -111,7 +111,7 @@ impl RequestApiVersion {
 
         let api_tag_buffer = socket.read_u8().await?;
 
-        Ok(RequestApiVersion {
+        Ok(KafkaRequest {
             msg_size,
             header: RequestHeader {
                 key: api_key,
