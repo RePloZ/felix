@@ -1,6 +1,6 @@
 use bytes::{BufMut, BytesMut};
 
-use super::req::KafkaRequest;
+use crate::stream::req::KafkaRequest;
 use crate::utils::ResponseApiError;
 
 pub struct ResponseApiVersion {
@@ -101,5 +101,60 @@ impl Into<BytesMut> for ResponseApiVersion {
         buf.put_u8(self.body.tag_buffer);
 
         buf
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_response(versions: Vec<ResponseVersion>) -> ResponseApiVersion {
+        ResponseApiVersion {
+            header: ResponseHeader { correlation_id: 1 },
+            body: ResponseBody {
+                error_code: 0,
+                versions,
+                throttle_time_ms: 0,
+                tag_buffer: 0,
+            },
+        }
+    }
+
+    fn make_version(api_key: u16) -> ResponseVersion {
+        ResponseVersion {
+            api_key,
+            version_range: (0, 4),
+            tag_buffer: 0,
+        }
+    }
+
+    #[test]
+    fn size_with_one_version() {
+        let resp = make_response(vec![make_version(18)]);
+        // 4 correlation_id + 2 error_code + 1 array_len + 7 version + 4 throttle + 1 tag = 19
+        assert_eq!(resp.size(), 19);
+    }
+
+    #[test]
+    fn size_with_no_versions() {
+        let resp = make_response(vec![]);
+        // 4 + 2 + 1 + 0 + 4 + 1 = 12
+        assert_eq!(resp.size(), 12);
+    }
+
+    #[test]
+    fn size_with_multiple_versions() {
+        let resp = make_response(vec![make_version(1), make_version(18), make_version(75)]);
+        // 12 + 3 * 7 = 33
+        assert_eq!(resp.size(), 33);
+    }
+
+    #[test]
+    fn size_matches_serialized_bytes() {
+        let resp = make_response(vec![make_version(18)]);
+        let expected_size = resp.size();
+        let buf: BytesMut = resp.into();
+        // buf includes the 4-byte size prefix itself, so actual payload = buf.len() - 4
+        assert_eq!((buf.len() - 4) as u32, expected_size);
     }
 }
