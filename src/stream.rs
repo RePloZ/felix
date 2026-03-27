@@ -1,5 +1,6 @@
 mod req;
 mod res;
+mod describe;
 
 use anyhow::Result;
 use bytes::BytesMut;
@@ -19,11 +20,7 @@ pub async fn handle_connection(mut socket: TcpStream) -> Result<(), CodecError> 
         };
 
         let mut buf: BytesMut = ResponseApiVersion::from(req).into();
-
-        socket
-            .write_all_buf(&mut buf)
-            .await
-            .map_err(|err| CodecError::from(err))?;
+        socket.write_all_buf(&mut buf).await?;
     }
 
     Ok(())

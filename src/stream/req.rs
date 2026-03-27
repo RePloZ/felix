@@ -3,14 +3,12 @@ use tokio::net::TcpStream;
 
 use crate::utils::CodecError;
 
-#[derive(Debug)]
 pub struct KafkaRequest {
     pub msg_size: u32,
     pub header: RequestHeader,
     pub api_version: ApiVersion,
 }
 
-#[derive(Debug)]
 pub struct RequestHeader {
     pub key: u16,
     pub version: u16,
@@ -19,47 +17,25 @@ pub struct RequestHeader {
     pub tag_buffer: u8,
 }
 
-#[derive(Debug)]
 pub struct ClientId {
     pub length: u16,
     pub content: String,
 }
 
-#[derive(Debug)]
 pub struct ClientSoftwareVersion {
     pub length: u8,
     pub content: String,
 }
 
-#[derive(Debug)]
 pub struct ApiVersion {
     pub client: ApiVersionClientId,
     pub software_version: ClientSoftwareVersion,
     pub tag_buffer: u8,
 }
 
-#[derive(Debug)]
 pub struct ApiVersionClientId {
     pub length: u8,
     pub content: String,
-}
-
-pub struct Header {
-    pub api_key: i16,
-    pub api_version: i16,
-    pub correlation_id: i32,
-    pub msg_size: u32,
-    pub client_id: Option<Vec<u8>>,
-    pub tag_buffer: Option<Vec<u8>>,
-}
-
-impl Header {
-    pub fn check_version(&self) -> i16 {
-        match self.api_version {
-            0..=4 => 0,
-            _ => 35,
-        }
-    }
 }
 
 impl ApiVersionClientId {
