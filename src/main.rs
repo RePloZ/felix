@@ -1,7 +1,9 @@
 use tokio::net::TcpListener;
 
-use crate::stream::handle_connection;
+use crate::stream::connect_stream;
 
+pub mod requests;
+pub mod responses;
 pub mod stream;
 pub mod utils;
 
@@ -15,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let socket = listener.accept().await?.0;
 
         tokio::spawn(async move {
-            if let Err(error) = handle_connection(socket).await {
+            if let Err(error) = connect_stream(socket).await {
                 eprintln!("connection error: {:?}", error);
             }
         });

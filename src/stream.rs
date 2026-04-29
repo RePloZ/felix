@@ -1,25 +1,22 @@
-mod req;
-mod res;
-mod describe;
-
-use anyhow::Result;
 use bytes::BytesMut;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 
-use crate::utils::CodecError;
-use req::KafkaRequest;
+use crate::requests;
+use crate::responses::ApiVersionsRes;
 
-pub async fn handle_connection(mut socket: TcpStream) -> Result<(), CodecError> {
-    use crate::stream::res::ResponseApiVersion;
-
+pub async fn connect_stream(mut socket: TcpStream) -> anyhow::Result<()> {
     loop {
-        let req = match KafkaRequest::from_socket(&mut socket).await {
+        let req = match requests::ApiVersionsReq::from_socket(&mut socket).await {
             Ok(req) => req,
-            Err(_) => break,
+            Err(err) => {
+                eprintln!("{err}");
+                break;
+            }
         };
 
-        let mut buf: BytesMut = ResponseApiVersion::from(req).into();
+        let res: ApiVersionsRes = req.into();
+        let mut buf: BytesMut = res.into();
         socket.write_all_buf(&mut buf).await?;
     }
 
