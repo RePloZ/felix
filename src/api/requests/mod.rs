@@ -30,15 +30,12 @@ pub struct Request {
 impl StreamReader for Request {
     async fn from_stream<R: AsyncReadExt + Unpin>(stream: &mut R) -> crate::error::Result<Self> {
         let header = RequestHeader::from_stream(stream).await?;
-        println!("[Request] -> header: {header:#?}\n");
-
         let body = match header.key.0 {
             18 => RequestBody::ApiVersion(ApiVersionsRequest::from_stream(stream).await?),
             _ => RequestBody::DescribeTopicPartitions(
                 ReqDescribeTopicPartitions::from_stream(stream).await?,
             ),
         };
-        println!("[Request] -> body: {body:#?}\n");
 
         Ok(Self { header, body })
     }
@@ -54,10 +51,10 @@ impl IntoResponse for Request {
             }
             RequestBody::DescribeTopicPartitions(req_describe_topic_partitions) => {
                 let header = ResHeaderV1::from_request(&self.header);
-                println!("[Response] -> header: {header:#?}\n");
                 let body =
                     DescribeTopicBody::from_request(&self.header, &req_describe_topic_partitions);
-                println!("[Response] -> body: {body:#?}");
+
+                println!("[Response] -> body: {body}");
                 Response::DescribeTopic(header, body)
             }
         }
